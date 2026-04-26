@@ -1,0 +1,17 @@
+[project]
+name = "pln-projeto"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "matplotlib>=3.10.9",
+    "networkx>=3.6.1",
+    "pandas>=3.0.2",
+    "pt-core-news-sm",
+    "spacy>=3.8.14",
+    "streamlit>=1.56.0",
+]
+
+[tool.uv.sources]
+pt-core-news-sm = { url = "https://github.com/explosion/spacy-models/releases/download/pt_core_news_sm-3.8.0/pt_core_news_sm-3.8.0-py3-none-any.whl" }
