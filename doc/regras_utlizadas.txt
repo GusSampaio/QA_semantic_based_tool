@@ -1,5 +1,4 @@
-# REGRA COPULATIVA
-
+# Regra copulativa
 Detecta construções do tipo "X é Y", "X são Y", "X era Y".
 
 Como funciona na árvore UD:
@@ -20,3 +19,24 @@ Passos da regra:
 O predicado é diferenciado pelo POS do predicativo:
   NOUN / PROPN -> "instancia_de"   (A mitose é um processo)
   ADJ          -> "tem_propriedade" (A mitose é importante)
+
+# Regra baseada em `obj` e `nsubj:pass`
+Captura construções transitivas nas vozes ativa e passiva:
+
+    - Se `dep == obj` (voz ativa):
+        * Arg1: `obj`
+        * Arg0: `nsubj` do mesmo verbo (quando presente)
+
+    - Se `dep == nsubj:pass` (voz passiva):
+        * Arg1: `nsubj:pass`
+        * Arg0: `obl:agent` do mesmo verbo (quando presente)
+
+    - predicado: lema do verbo (head do token)
+
+Exemplo (ativa):
+"A mitose gera duas células-filhas."
+[mitose] --(gerar)--> [células-filhas]
+
+Exemplo (passiva):
+"As células-filhas foram geradas pela mitose."
+[mitose] --(gerar)--> [células-filhas]

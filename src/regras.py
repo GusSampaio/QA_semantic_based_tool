@@ -1,8 +1,7 @@
 import spacy
 from src.auxiliares import normalizar_termo
 
-def extrair_copula(frase: str, nlp: spacy.Language) -> list[tuple]:
-    doc = nlp(frase)
+def extrair_copula(frase: str, doc: spacy.Language) -> list[tuple]:
     triplas = []
 
     for token in doc:
@@ -54,5 +53,75 @@ def extrair_copula(frase: str, nlp: spacy.Language) -> list[tuple]:
             predicado = "ser"
 
         triplas.append((sujeito, predicado, objeto, "regra_copula"))
+
+    return triplas
+
+def extrair_objeto_direto(frase: str, doc: spacy.Language) -> list[tuple]:
+    """
+    Regra do objeto direto (dep == obj).
+    
+    Cobre dois casos:
+
+    VOZ ATIVA:
+      - Arg0: irmão com dep == nsubj
+      - predicado: lema do verbo
+      - Arg1: token com dep == obj
+      Exemplo: "A mitose gera células-filhas."
+        → [mitose] --(gerar)--> [células-filhas]
+
+    VOZ PASSIVA:
+      - Arg1: irmão com dep == nsubj:pass  (sujeito paciente)
+      - Arg0: irmão com dep == obl:agent   (agente explícito, opcional)
+      - predicado: lema do verbo
+      Exemplo: "As células-filhas foram geradas pela mitose."
+        → [mitose] --(gerar)--> [células-filhas]
+
+    Baseada em:
+      obj        → Arg1 em 92,03% dos casos
+      nsubj:pass → Arg1 em 92%   dos casos
+      obl:agent  → Arg0 em 95%   dos casos
+    (Porttinari-base PropBank, Freitas & Pardo, 2024/2025)
+    """
+    triplas = []
+    for token in doc:
+        if token.dep_ != "obj" and token.dep_ != "nsubj:pass":
+            continue
+
+        verbo = token.head
+        if verbo.pos_ not in ("VERB", "AUX"):
+            continue
+
+        # Coleta filhos relevantes do verbo
+        nsubj_token      = None
+        nsubj_pass_token = None
+        obl_agent_token  = None
+
+        for irmao in verbo.children:
+            if irmao.dep_ == "nsubj":
+                nsubj_token = irmao
+            elif irmao.dep_ == "nsubj:pass":
+                nsubj_pass_token = irmao
+            elif irmao.dep_ == "obl:agent":
+                obl_agent_token = irmao
+
+        predicado = normalizar_termo(verbo.lemma_)
+        objeto    = normalizar_termo(" ".join(t.text for t in token.subtree))
+
+        # ── Voz ativa ──────────────────────────────────────────────────
+        if nsubj_token is not None:
+            sujeito = normalizar_termo(" ".join(t.text for t in nsubj_token.subtree))
+            triplas.append((sujeito, predicado, objeto, "regra_obj_ativa"))
+
+        # ── Voz passiva ────────────────────────────────────────────────
+        elif nsubj_pass_token is not None:
+            paciente = normalizar_termo(" ".join(t.text for t in nsubj_pass_token.subtree))
+
+            if obl_agent_token is not None:
+                # Agente explícito: "As células foram geradas pela mitose"
+                agente = normalizar_termo(" ".join(t.text for t in obl_agent_token.subtree))
+                triplas.append((agente, predicado, paciente, "regra_obj_passiva_com_agente"))
+            else:
+                # Sem agente explícito: registra só o paciente com Arg0 desconhecido
+                triplas.append((None, predicado, paciente, "regra_obj_passiva_sem_agente"))
 
     return triplas

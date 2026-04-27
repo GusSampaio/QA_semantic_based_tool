@@ -1,8 +1,6 @@
 import re
 import streamlit as st
 import spacy
-import networkx as nx
-import matplotlib.pyplot as plt
 import pandas as pd
 
 from src.auxiliares import limpar_texto, separar_frases, normalizar_termo
@@ -33,16 +31,7 @@ def carregar_modelo_spacy():
 nlp = carregar_modelo_spacy()
 
 # Texto de exemplo para processamento inicial
-TEXTO_PADRAO = """
-A mitose é um processo de divisão celular.
-A mitose é importante para crescimento e regeneração.
-A mitose é composta por prófase, metáfase, anáfase e telófase.
-A prófase é a primeira fase da mitose.
-A metáfase é a fase de alinhamento dos cromossomos.
-A anáfase é a fase de separação das cromátides-irmãs.
-A telófase é a fase final da mitose.
-O fuso mitótico é uma estrutura responsável pela separação dos cromossomos.
-"""
+TEXTO_PADRAO = """As células-filhas foram geradas pela mitose. A mitose é um processo celular."""
 
 triplas = extrair_triplas(separar_frases(limpar_texto(TEXTO_PADRAO), nlp), nlp)
 grafo = grafo_module.construir_grafo(triplas, nlp)
@@ -150,7 +139,8 @@ with tab3:
     st.caption("Mostra o que a regra copulativa encontrou em cada frase.")
     for i, frase in enumerate(st.session_state.frases, start=1):
         st.write(f"**{i}.** {frase}")
-        triplas_frase = regras_module.extrair_copula(frase, nlp)
+        doc = nlp(frase)
+        triplas_frase = regras_module.extrair_copula(frase, doc)
         if triplas_frase:
             for s, p, o, _ in triplas_frase:
                 st.code(f"sujeito:    {s}\npredicado:  {p}\nobjeto:     {o}")
