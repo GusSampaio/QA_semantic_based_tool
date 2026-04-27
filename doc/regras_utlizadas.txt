@@ -21,22 +21,23 @@ O predicado é diferenciado pelo POS do predicativo:
   ADJ          -> "tem_propriedade" (A mitose é importante)
 
 # Regra baseada em `obj` e `nsubj:pass`
-Captura construções transitivas nas vozes ativa e passiva:
-
-    - Se `dep == obj` (voz ativa):
-        * Arg1: `obj`
-        * Arg0: `nsubj` do mesmo verbo (quando presente)
-
-    - Se `dep == nsubj:pass` (voz passiva):
-        * Arg1: `nsubj:pass`
-        * Arg0: `obl:agent` do mesmo verbo (quando presente)
-
-    - predicado: lema do verbo (head do token)
-
-Exemplo (ativa):
-"A mitose gera duas células-filhas."
+Quando encontra um obj, você está num caso de voz ativa. Aí o raciocínio é: esse token é o Arg1, o verbo ao qual ele está ligado é o predicado, e você procura entre os filhos desse verbo um nsubj, que vira o Arg0.
+Exemplo:
+“A mitose gera células-filhas.”
+Aqui, “células-filhas” é obj, então vira Arg1. O verbo é “gerar”. Entre os filhos do verbo, você acha “mitose” como nsubj, então ela vira Arg0. Resultado:
 [mitose] --(gerar)--> [células-filhas]
 
-Exemplo (passiva):
-"As células-filhas foram geradas pela mitose."
+Quando encontra um nsubj:pass, você está num caso de voz passiva. A lógica muda um pouco: esse nsubj:pass também é o Arg1 (o paciente), mas agora o Arg0 não está como sujeito. Então você procura um obl:agent, que representa o agente da passiva.
+Exemplo:
+“As células-filhas foram geradas pela mitose.”
+Aqui, “células-filhas” é nsubj:pass, então vira Arg1. O verbo é “gerar”. Entre os filhos do verbo, você encontra “mitose” como obl:agent, então ela vira Arg0. Resultado:
 [mitose] --(gerar)--> [células-filhas]
+
+Se a frase passiva não tiver agente explícito, a regra ainda funciona, mas só parcialmente.
+Exemplo:
+“As células-filhas foram geradas.”
+Você encontra “células-filhas” como nsubj:pass (Arg1), identifica o verbo “gerar”, mas não existe obl:agent. Então você registra algo como:
+[None] --(gerar)--> [células-filhas]
+ou seja, sabe quem sofreu a ação, mas não quem a realizou.
+
+Em resumo, a regra sempre tenta montar a mesma estrutura semântica (Arg0 → verbo → Arg1), mas aceita duas formas sintáticas diferentes para encontrar o Arg1: obj (ativa) e nsubj:pass (passiva).
