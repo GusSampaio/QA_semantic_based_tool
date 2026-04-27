@@ -1,0 +1,22 @@
+# REGRA COPULATIVA
+
+Detecta construções do tipo "X é Y", "X são Y", "X era Y".
+
+Como funciona na árvore UD:
+
+  "A mitose é um processo celular."
+
+  processo (ROOT)
+  ├── mitose   -> dep: nsubj   <- Arg0 (quem está sendo definido)
+  ├── é        -> dep: cop     <- sinal de que é construção copulativa
+  └── celular  -> dep: amod
+
+Passos da regra:
+  1. Encontra token com dep == "cop" -> confirma estrutura copulativa
+  2. O HEAD desse token é o predicativo (ROOT)
+  3. Busca irmão do predicativo com dep == "nsubj" -> sujeito
+  4. Monta tripla: sujeito --[ser]--> predicativo
+
+O predicado é diferenciado pelo POS do predicativo:
+  NOUN / PROPN -> "instancia_de"   (A mitose é um processo)
+  ADJ          -> "tem_propriedade" (A mitose é importante)
