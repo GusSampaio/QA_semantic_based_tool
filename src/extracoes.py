@@ -28,17 +28,16 @@ def extrair_triplas_frames(frases: list, nlp: spacy.Language) -> list[tuple]:
     for frase in frases:
         doc = nlp(frase.strip())
 
-        # NOVO PIPELINE
         frames = frames_module.extrair_todos_frames(doc)
         triplas.extend(frames_module.frames_para_triplas(frames))
 
-    # Remove duplicatas por (sujeito, predicado, objeto)
+    # Remove duplicatas
     vistas = set()
     triplas_unicas = []
     for sujeito, predicado, objeto in triplas:
         chave = (sujeito, predicado, objeto)
         if chave not in vistas:
             vistas.add(chave)
-            triplas_unicas.append((sujeito, predicado, objeto, "frame"))
+            triplas_unicas.append((sujeito, predicado, objeto, "frame_evento"))
 
     return triplas_unicas

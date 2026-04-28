@@ -1,5 +1,5 @@
 import spacy
-from src.auxiliares import normalizar_termo
+from src.auxiliares import normalizar_termo, eh_tempo
 
 def criar_frame(verbo):
     return {
@@ -113,9 +113,14 @@ def preencher_obl(frame):
                 break
 
         if prep in {"em", "no", "na", "nos", "nas"}:
-            frame["ArgMs"]["loc"].append(span)
-        elif prep in {"em", "durante", "após", "antes"}:
+            if eh_tempo(span):
+                frame["ArgMs"]["tmp"].append(span)
+            else:
+                frame["ArgMs"]["loc"].append(span)
+
+        elif prep in {"durante", "após", "antes"}:
             frame["ArgMs"]["tmp"].append(span)
+
         else:
             frame["ArgMs"]["outros"].append(span)
 
@@ -145,18 +150,35 @@ def extrair_todos_frames(doc):
 
 def frames_para_triplas(frames):
     triplas = []
+    event_id = 0
 
     for f in frames:
-        if f["Arg0"] and f["Arg1"]:
-            triplas.append((f["Arg0"], f["predicado"], f["Arg1"]))
+        event_node = f"evento_{event_id}"
+        event_id += 1
 
+        # tipo do evento (verbo)
+        triplas.append((event_node, "tipo", f["predicado"]))
+
+        # Arg0
+        if f["Arg0"]:
+            triplas.append((event_node, "Arg0", f["Arg0"]))
+
+        # Arg1
+        if f["Arg1"]:
+            triplas.append((event_node, "Arg1", f["Arg1"]))
+
+        # Arg2 (se quiser já deixar pronto)
+        if f["Arg2"]:
+            triplas.append((event_node, "Arg2", f["Arg2"]))
+
+        # ArgMs
         for loc in f["ArgMs"]["loc"]:
-            triplas.append((f["Arg0"], f["predicado"], loc))
+            triplas.append((event_node, "loc", loc))
 
         for tmp in f["ArgMs"]["tmp"]:
-            triplas.append((f["predicado"], "tmp", tmp))
-        
+            triplas.append((event_node, "tmp", tmp))
+
         for outro in f["ArgMs"]["outros"]:
-            triplas.append((f["predicado"], "mod", outro))
+            triplas.append((event_node, "mod", outro))
 
     return triplas
