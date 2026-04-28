@@ -92,6 +92,16 @@ def preencher_objeto_direto(frame):
             frame["Arg1"] = normalizar_termo(" ".join(t.text for t in filho.subtree))
         elif filho.dep_ == "nsubj:pass":
             frame["Arg1"] = normalizar_termo(" ".join(t.text for t in filho.subtree))
+    
+    if verbo.dep_ == "conj":
+        # tenta pegar o objeto direto do verbo coordenado
+        for filho in verbo.head.children:
+            if filho.dep_ == "obj":
+                frame["Arg1"] = normalizar_termo(" ".join(t.text for t in filho.subtree))
+                break
+            elif filho.dep_ == "nsubj:pass":
+                frame["Arg1"] = normalizar_termo(" ".join(t.text for t in filho.subtree))
+                break
 
     # Define o agente (Arg0) - primeiro tenta o sujeito ativo, depois o agente em voz passiva, e por fim tenta pegar o sujeito do verbo coordenado (caso o verbo seja uma conjunção)
     if nsubj is not None:
