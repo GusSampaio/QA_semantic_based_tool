@@ -4,8 +4,7 @@ import spacy
 import pandas as pd
 
 from src.auxiliares import limpar_texto, separar_frases, normalizar_termo
-from src.extracoes import extrair_triplas
-import src.regras as regras_module
+from src.extracoes import extrair_triplas_regras, extrair_triplas_frames
 import src.grafo as grafo_module
 
 # Configuracao geral da pagina
@@ -27,57 +26,62 @@ def carregar_modelo_spacy():
         )
         st.stop()
 
-
 nlp = carregar_modelo_spacy()
 
-# Texto de exemplo para processamento inicial
+# Texto de exemplo
 TEXTO_PADRAO = """As células-filhas foram geradas pela mitose. A mitose é um processo celular."""
 
-triplas = extrair_triplas(separar_frases(limpar_texto(TEXTO_PADRAO), nlp), nlp)
-grafo = grafo_module.construir_grafo(triplas, nlp)
+# SIDEBAR -----------------------------------------------------------------------
+with st.sidebar:
+    st.header("⚙️ Configurações")
 
-# Inicializacao do estado da aplicacao
+    modo_extracao = st.radio(
+        "Modo de extração",
+        ["Regras (triplas diretas)", "Frames (pipeline novo)"]
+    )
+    
+# Escolhe função dinamicamente
+if modo_extracao == "Regras (triplas diretas)":
+    func_extracao = extrair_triplas_regras
+else:
+    func_extracao = extrair_triplas_frames
+
+# Inicialização do estado -------------------------------------------------------
 if "triplas" not in st.session_state:
     frases_iniciais = separar_frases(limpar_texto(TEXTO_PADRAO), nlp)
-    triplas_iniciais = extrair_triplas(frases_iniciais, nlp)
+    triplas_iniciais = extrair_triplas_regras(frases_iniciais, nlp)
     grafo_inicial = grafo_module.construir_grafo(triplas_iniciais, nlp)
 
     st.session_state.frases = frases_iniciais
     st.session_state.triplas = triplas_iniciais
     st.session_state.grafo = grafo_inicial
 
-# Definicoes de interface e logica de processamento
+# UI ----------------------------------------------------------------------------
 st.title("📖 Livro Didático Virtual Interativo")
 
 st.markdown("""
-Pipeline: **texto → segmentação → árvore UD → regra copulativa → grafo**
+Pipeline: **texto → segmentação → árvore UD → extração → grafo**
 """)
-
-with st.sidebar:
-    st.header("💬 Perguntas de exemplo")
-    st.write("• O que é mitose?")
-    st.write("• O que é prófase?")
-    st.write("• O que é fuso mitótico?")
-    st.markdown("---")
-    st.caption("Apenas a regra copulativa está ativa nesta versão.")
-
 
 col1, col2 = st.columns([1, 1])
 
+# COLUNA TEXTO ------------------------------------------------------------------
 with col1:
     st.header("📖 Capítulo")
     texto = st.text_area("Cole ou edite o capítulo:", value=TEXTO_PADRAO, height=370)
 
     if st.button("🔎 Processar texto e gerar grafo"):
         frases = separar_frases(limpar_texto(texto), nlp)
-        triplas = extrair_triplas(frases, nlp)
+        triplas = func_extracao(frases, nlp)
         grafo = grafo_module.construir_grafo(triplas, nlp)
 
         st.session_state.frases = frases
         st.session_state.triplas = triplas
         st.session_state.grafo = grafo
-        st.success("Texto processado!")
 
+        st.success(f"Texto processado com modo: {modo_extracao}")
+
+# COLUNA PERGUNTAS --------------------------------------------------------------
 with col2:
     st.header("💬 Pergunte ao grafo")
     pergunta = st.text_input("Digite uma pergunta:", placeholder="O que é mitose?")
@@ -95,7 +99,11 @@ with col2:
     if st.button("Consultar"):
         if conceito_consulta.strip():
             acao = normalizar_termo(acao_consulta) if acao_consulta.strip() else None
-            respostas = grafo_module.fazer_pergunta_ao_grafo(st.session_state.grafo, conceito_consulta, acao)
+            respostas = grafo_module.fazer_pergunta_ao_grafo(
+                st.session_state.grafo,
+                conceito_consulta,
+                acao
+            )
             if respostas:
                 for obj, ac in respostas:
                     st.write(f"**{normalizar_termo(conceito_consulta)}** --({ac})--> **{obj}**")
@@ -104,70 +112,38 @@ with col2:
         else:
             st.warning("Digite um conceito.")
 
-
+# TABS --------------------------------------------------------------------------
 st.markdown("---")
 
-tab1, tab2, tab3, tab4 = st.tabs([
+tab1, tab2 = st.tabs([
     "🕸️ Grafo",
-    "📌 Triplas",
-    "🧩 Análise por frase",
-    "🧠 Como funciona"
+    "📌 Triplas"
 ])
 
+# GRAFO -------------------------------------------------------------------------
 with tab1:
     grafo = st.session_state.grafo
+    st.caption(f"Modo atual: {modo_extracao}")
     st.write(f"Nós: **{grafo.number_of_nodes()}** | Arestas: **{grafo.number_of_edges()}**")
+
     if grafo.number_of_nodes() > 0:
         st.pyplot(grafo_module.desenhar_grafo(grafo))
     else:
         st.warning("O grafo está vazio.")
 
+# TRIPLAS -----------------------------------------------------------------------
 with tab2:
     triplas = st.session_state.triplas
+    st.caption(f"Modo atual: {modo_extracao}")
+
     if triplas:
         st.dataframe(
             pd.DataFrame(triplas, columns=["Sujeito", "Predicado", "Objeto", "Origem"]),
             width='stretch'
         )
+
         st.markdown("### Formato textual")
         for s, p, o, orig in triplas:
             st.code(f"[{s}] --({p})--> [{o}]")
     else:
         st.warning("Nenhuma tripla extraída.")
-
-with tab3:
-    st.caption("Mostra o que a regra copulativa encontrou em cada frase.")
-    for i, frase in enumerate(st.session_state.frases, start=1):
-        st.write(f"**{i}.** {frase}")
-        doc = nlp(frase)
-        triplas_frase = regras_module.extrair_copula(frase, doc)
-        if triplas_frase:
-            for s, p, o, _ in triplas_frase:
-                st.code(f"sujeito:    {s}\npredicado:  {p}\nobjeto:     {o}")
-        else:
-            st.caption("→ Nenhuma construção copulativa encontrada.")
-
-with tab4:
-    st.markdown("""
-    ### A regra copulativa
-
-    Frases copulativas ("X é Y") têm uma estrutura específica no UD
-    onde o verbo "ser" **não é o ROOT** — ele é marcado como `cop` (cópula).
-    O ROOT é o predicativo (o que vem depois do "é").
-
-    **Exemplo: "A mitose é um processo celular."**
-    ```
-    processo  ← ROOT
-    ├── mitose   dep: nsubj   → sujeito
-    ├── é        dep: cop     → sinal da copulativa
-    └── celular  dep: amod
-    ```
-
-    **Passos da regra:**
-    1. Encontra token com `dep == cop`
-    2. O HEAD desse token é o predicativo
-    3. Busca irmão com `dep == nsubj` → sujeito
-    4. Gera tripla com predicado baseado no POS do predicativo:
-       - NOUN → `instancia_de`
-       - ADJ  → `tem_propriedade`
-    """)

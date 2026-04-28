@@ -1,7 +1,7 @@
 import spacy
 from src.auxiliares import normalizar_termo
 
-def extrair_copula(frase: str, doc: spacy.Language) -> list[tuple]:
+def extrair_copula(doc: spacy.Language) -> list[tuple]:
     triplas = []
 
     for token in doc:
@@ -56,7 +56,7 @@ def extrair_copula(frase: str, doc: spacy.Language) -> list[tuple]:
 
     return triplas
 
-def extrair_objeto_direto(frase: str, doc: spacy.Language) -> list[tuple]:
+def extrair_objeto_direto(doc: spacy.Language) -> list[tuple]:
     """
     Regra do objeto direto (dep == obj).
     
@@ -123,5 +123,55 @@ def extrair_objeto_direto(frase: str, doc: spacy.Language) -> list[tuple]:
             else:
                 # Sem agente explícito: registra só o paciente com Arg0 desconhecido
                 triplas.append((None, predicado, paciente, "regra_obj_passiva_sem_agente"))
+
+    return triplas
+
+
+def extrair_obl(doc: spacy.Language) -> list[tuple]:
+    triplas = []
+
+    for verbo in doc:
+        if verbo.pos_ != "VERB":
+            continue
+
+        nsubj = None
+        nsubj_pass = None
+
+        for filho in verbo.children:
+            if filho.dep_ == "nsubj":
+                nsubj = filho
+            elif filho.dep_ == "nsubj:pass":
+                nsubj_pass = filho
+
+        predicado = normalizar_termo(verbo.lemma_)
+
+        for filho in verbo.children:
+            if filho.dep_ != "obl":
+                continue
+
+            span = normalizar_termo(" ".join(t.text for t in filho.subtree))
+
+            # pega preposição
+            prep = None
+            for t in filho.children:
+                if t.dep_ == "case":
+                    prep = t.text.lower()
+                    break
+
+            if prep in {"em", "no", "na", "nos", "nas"}:
+                papel = "ArgM-loc"
+            elif prep in {"durante", "após", "antes"} or (prep == "em" and any(t.like_num for t in filho.subtree)):
+                papel = "ArgM-tmp"
+            elif prep is not None:
+                papel = "ArgM"
+
+            if nsubj is not None:
+                arg0 = normalizar_termo(" ".join(t.text for t in nsubj.subtree))
+            elif nsubj_pass is not None:
+                arg0 = None  # ou você pode decidir outra estratégia
+            else:
+                arg0 = None
+
+            triplas.append((arg0, predicado, span, papel))
 
     return triplas
