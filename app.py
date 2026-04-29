@@ -4,7 +4,7 @@ import spacy
 import pandas as pd
 
 from src.auxiliares import limpar_texto, separar_frases, normalizar_termo
-from src.extracoes import extrair_triplas_regras, extrair_triplas_frames
+from src.extracoes import extrair_triplas_frames
 import src.grafo as grafo_module
 
 # Configuracao geral da pagina
@@ -30,26 +30,14 @@ nlp = carregar_modelo_spacy()
 
 # Texto de exemplo
 TEXTO_PADRAO = """As células-filhas foram geradas pela mitose. A mitose é um processo celular."""
-
-# SIDEBAR -----------------------------------------------------------------------
-with st.sidebar:
-    st.header("⚙️ Configurações")
-
-    modo_extracao = st.radio(
-        "Modo de extração",
-        ["Regras (triplas diretas)", "Frames (pipeline novo)"]
-    )
     
-# Escolhe função dinamicamente
-if modo_extracao == "Regras (triplas diretas)":
-    func_extracao = extrair_triplas_regras
-else:
-    func_extracao = extrair_triplas_frames
+func_extracao = extrair_triplas_frames
+modo_extracao = "Frames Semânticos"
 
 # Inicialização do estado -------------------------------------------------------
 if "triplas" not in st.session_state:
     frases_iniciais = separar_frases(limpar_texto(TEXTO_PADRAO), nlp)
-    triplas_iniciais = extrair_triplas_regras(frases_iniciais, nlp)
+    triplas_iniciais = extrair_triplas_frames(frases_iniciais, nlp)
     grafo_inicial = grafo_module.construir_grafo(triplas_iniciais, nlp)
 
     st.session_state.frases = frases_iniciais
@@ -115,9 +103,10 @@ with col2:
 # TABS --------------------------------------------------------------------------
 st.markdown("---")
 
-tab1, tab2 = st.tabs([
+tab1, tab2, tab3 = st.tabs([
     "🕸️ Grafo",
-    "📌 Triplas"
+    "📌 Arestas",
+    "📌 Nós"
 ])
 
 # GRAFO -------------------------------------------------------------------------
@@ -137,13 +126,57 @@ with tab2:
     st.caption(f"Modo atual: {modo_extracao}")
 
     if triplas:
+        triplas_arestas = [
+            {
+                "Sujeito": t["origem"],
+                "Predicado": t["papel"],
+                "Objeto": t["destino"]
+            } for t in triplas if t["tipo"] == "aresta"
+        ]   
         st.dataframe(
-            pd.DataFrame(triplas, columns=["Sujeito", "Predicado", "Objeto", "Origem"]),
+            pd.DataFrame(triplas_arestas, columns=["Sujeito", "Predicado", "Objeto", "Origem"]),
             width='stretch'
         )
 
         st.markdown("### Formato textual")
-        for s, p, o, orig in triplas:
-            st.code(f"[{s}] --({p})--> [{o}]")
+        for tripla in triplas:
+            print(tripla)
+
+        for tripla in triplas:
+            if tripla['tipo'] == 'aresta':
+                s = tripla['origem']
+                p = tripla['papel']
+                o = tripla['destino']
+                st.code(f"[{s}] --({p})--> [{o}]")
+    else:
+        st.warning("Nenhuma tripla extraída.")
+
+# NÓS ---------------------------------------------------------------------------
+with tab3:
+    triplas = st.session_state.triplas
+    st.caption(f"Modo atual: {modo_extracao}")
+
+    if triplas:
+
+        triplas_nos = [
+            {
+                "ID do evento": t["id"],
+                "Tipo do evento": t["attrs"]["tipo_evento"]
+            } for t in triplas if t["tipo"] == "no"
+        ]
+        st.dataframe(
+            pd.DataFrame(triplas_nos, columns=["ID do evento", "Tipo do evento"]),
+            width='stretch'
+        )
+
+        st.markdown("### Formato textual")
+        for tripla in triplas:
+            print(tripla)
+
+        for tripla in triplas:
+            if tripla['tipo'] == 'no':
+                s = tripla['id']
+                t = tripla['attrs']['tipo_evento']
+                st.code(f"[{s}] (tipo: {t})")
     else:
         st.warning("Nenhuma tripla extraída.")

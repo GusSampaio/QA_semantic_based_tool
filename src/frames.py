@@ -76,7 +76,6 @@ def preencher_objeto_direto(frame):
     verbo = frame["verbo"]
 
     nsubj = None
-    # nsubj_pass = None
     obl_agent = None
 
     # Descobre quais palavras dependem diretamente desse verbo
@@ -200,3 +199,82 @@ def frames_para_triplas(frames):
             triplas.append((event_node, "mod", outro))
 
     return triplas
+
+def frames_para_grafo_estruturado(frames, event_id_inicial=0):
+    """
+    Converte frames em estrutura preparada para construção de grafo.
+    
+    Retorna:
+        lista de dicts, cada um representando um elemento do grafo:
+        - {"tipo": "no", "id": str, "attrs": dict}  → nó
+        - {"tipo": "aresta", "origem": str, "destino": str, "papel": str}  → aresta
+    """
+    elementos = []
+    event_id = event_id_inicial
+
+    for f in frames:
+        event_node = f"evento_{event_id}"
+        event_id += 1
+
+        # Nó do evento com atributo 'tipo'
+        elementos.append({
+            "tipo": "no",
+            "id": event_node,
+            "attrs": {"tipo_evento": f["predicado"]}
+        })
+
+        # Arg0 → evento
+        if f["Arg0"]:
+            elementos.append({
+                "tipo": "aresta",
+                "origem": f["Arg0"],
+                "destino": event_node,
+                "papel": "Arg0"
+            })
+
+        # evento → Arg1
+        if f["Arg1"]:
+            elementos.append({
+                "tipo": "aresta",
+                "origem": event_node,
+                "destino": f["Arg1"],
+                "papel": "Arg1"
+            })
+
+        # evento → Arg2
+        if f["Arg2"]:
+            elementos.append({
+                "tipo": "aresta",
+                "origem": event_node,
+                "destino": f["Arg2"],
+                "papel": "Arg2"
+            })
+
+        # evento → ArgM-loc
+        for loc in f["ArgMs"]["loc"]:
+            elementos.append({
+                "tipo": "aresta",
+                "origem": event_node,
+                "destino": loc,
+                "papel": "ArgM-loc"
+            })
+
+        # evento → ArgM-tmp
+        for tmp in f["ArgMs"]["tmp"]:
+            elementos.append({
+                "tipo": "aresta",
+                "origem": event_node,
+                "destino": tmp,
+                "papel": "ArgM-tmp"
+            })
+
+        # evento → ArgM (outros)
+        for outro in f["ArgMs"]["outros"]:
+            elementos.append({
+                "tipo": "aresta",
+                "origem": event_node,
+                "destino": outro,
+                "papel": "ArgM"
+            })
+
+    return elementos, event_id
