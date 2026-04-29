@@ -67,7 +67,7 @@ with col1:
         st.session_state.triplas = triplas
         st.session_state.grafo = grafo
 
-        st.success(f"Texto processado com modo: {modo_extracao}")
+        st.success(f"Texto processado. Foram extraídas {len(triplas)} triplas e o grafo resultante tem {grafo.number_of_nodes()} nós e {grafo.number_of_edges()} arestas.")
 
 # COLUNA PERGUNTAS --------------------------------------------------------------
 with col2:
@@ -79,26 +79,6 @@ with col2:
             st.info(grafo_module.responder_pergunta(pergunta, st.session_state.grafo))
         else:
             st.warning("Digite uma pergunta primeiro.")
-
-    st.markdown("### Consulta direta")
-    conceito_consulta = st.text_input("Conceito:", placeholder="mitose")
-    acao_consulta = st.text_input("Ação (opcional):", placeholder="instancia_de")
-
-    if st.button("Consultar"):
-        if conceito_consulta.strip():
-            acao = normalizar_termo(acao_consulta) if acao_consulta.strip() else None
-            respostas = grafo_module.fazer_pergunta_ao_grafo(
-                st.session_state.grafo,
-                conceito_consulta,
-                acao
-            )
-            if respostas:
-                for obj, ac in respostas:
-                    st.write(f"**{normalizar_termo(conceito_consulta)}** --({ac})--> **{obj}**")
-            else:
-                st.warning("Nenhuma relação encontrada.")
-        else:
-            st.warning("Digite um conceito.")
 
 # TABS --------------------------------------------------------------------------
 st.markdown("---")
@@ -128,19 +108,17 @@ with tab2:
     if triplas:
         triplas_arestas = [
             {
-                "Sujeito": t["origem"],
-                "Predicado": t["papel"],
+                "Evento (Ação)": t["origem"],
+                "Relação Semântica": t["papel"],
                 "Objeto": t["destino"]
             } for t in triplas if t["tipo"] == "aresta"
         ]   
         st.dataframe(
-            pd.DataFrame(triplas_arestas, columns=["Sujeito", "Predicado", "Objeto", "Origem"]),
+            pd.DataFrame(triplas_arestas, columns=["Evento (Ação)", "Relação Semântica", "Objeto"]),
             width='stretch'
         )
 
         st.markdown("### Formato textual")
-        for tripla in triplas:
-            print(tripla)
 
         for tripla in triplas:
             if tripla['tipo'] == 'aresta':
@@ -170,8 +148,6 @@ with tab3:
         )
 
         st.markdown("### Formato textual")
-        for tripla in triplas:
-            print(tripla)
 
         for tripla in triplas:
             if tripla['tipo'] == 'no':
