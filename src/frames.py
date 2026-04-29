@@ -69,6 +69,55 @@ def extrair_frames_copula(doc):
 
     return frames
 
+def resolver_relativo(token):
+    """
+    Se o token for um pronome relativo ('que'),
+    tenta recuperar o antecedente (substantivo).
+    Caso contrário, retorna o próprio token.
+    """
+    if token.text.lower() != "que":
+        return token
+
+    # sobe na árvore até achar um substantivo
+    atual = token.head
+    while atual is not None:
+        if atual.pos_ in ("NOUN", "PROPN"):
+            return atual
+        atual = atual.head
+
+    return token  # fallback
+
+def extrair_span(token):
+    token = resolver_relativo(token)
+
+    tokens_filtrados = []
+
+    for t in token.subtree:
+        # mantém SEMPRE o núcleo
+        if t == token:
+            tokens_filtrados.append(t.text)
+            continue
+
+        # ignora determinantes isolados
+        if t.dep_ == "det":
+            continue
+
+        # ignora cópula e sujeito redundante
+        if t.dep_ in {"cop", "nsubj"}:
+            continue
+
+        # ignora oração relativa
+        if t.dep_ in {"acl", "acl:relcl"}:
+            continue
+
+        # ignora tudo dentro da relativa
+        if any(anc.dep_ in {"acl", "acl:relcl"} for anc in t.ancestors):
+            continue
+
+        tokens_filtrados.append(t.text)
+
+    return normalizar_termo(" ".join(tokens_filtrados))
+
 # Descobre quem são os partipantes do evento e depois preenche o frame (arg0 e arg1)
 def preencher_objeto_direto(frame):
 
@@ -88,23 +137,28 @@ def preencher_objeto_direto(frame):
     # Descobre o objeto direto (paciente)
     for filho in verbo.children:
         if filho.dep_ == "obj":
-            frame["Arg1"] = normalizar_termo(" ".join(t.text for t in filho.subtree))
+            # frame["Arg1"] = normalizar_termo(" ".join(t.text for t in filho.subtree))
+            frame["Arg1"] = extrair_span(filho)
         elif filho.dep_ == "nsubj:pass":
-            frame["Arg1"] = normalizar_termo(" ".join(t.text for t in filho.subtree))
+            # frame["Arg1"] = normalizar_termo(" ".join(t.text for t in filho.subtree))
+            frame["Arg1"] = extrair_span(filho)
     
     if verbo.dep_ == "conj":
         # tenta pegar o objeto direto do verbo coordenado
         for filho in verbo.head.children:
             if filho.dep_ == "obj":
-                frame["Arg1"] = normalizar_termo(" ".join(t.text for t in filho.subtree))
+                # frame["Arg1"] = normalizar_termo(" ".join(t.text for t in filho.subtree))
+                frame["Arg1"] = extrair_span(filho)
                 break
             elif filho.dep_ == "nsubj:pass":
-                frame["Arg1"] = normalizar_termo(" ".join(t.text for t in filho.subtree))
+                # frame["Arg1"] = normalizar_termo(" ".join(t.text for t in filho.subtree))
+                frame["Arg1"] = extrair_span(filho)
                 break
 
     # Define o agente (Arg0) - primeiro tenta o sujeito ativo, depois o agente em voz passiva, e por fim tenta pegar o sujeito do verbo coordenado (caso o verbo seja uma conjunção)
     if nsubj is not None:
-        frame["Arg0"] = normalizar_termo(" ".join(t.text for t in nsubj.subtree))
+        # frame["Arg0"] = normalizar_termo(" ".join(t.text for t in nsubj.subtree))
+        frame["Arg0"] = extrair_span(nsubj)
     elif obl_agent is not None:
         frame["Arg0"] = normalizar_termo(" ".join(t.text for t in obl_agent.subtree if t.dep_ != "case"))
     elif verbo.dep_ == "conj":

@@ -11,8 +11,8 @@ def separar_frases(texto: str, nlp: spacy.Language) -> list:
     doc = nlp(texto)
     return [sent.text.strip() for sent in doc.sents if sent.text.strip()]
 
-def normalizar_termo(termo: str) -> str:
-    termo = termo.lower().strip()
+def normalizar_termo(termo: str | spacy.tokens.token.Token) -> str:
+    termo = str(termo).lower().strip()
     termo = re.sub(r"[.!?;:]+$", "", termo)
     termo = re.sub(r"\s+", " ", termo)
     termo = termo.strip()
