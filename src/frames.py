@@ -137,35 +137,30 @@ def preencher_objeto_direto(frame):
     # Descobre o objeto direto (paciente)
     for filho in verbo.children:
         if filho.dep_ == "obj":
-            # frame["Arg1"] = normalizar_termo(" ".join(t.text for t in filho.subtree))
             frame["Arg1"] = extrair_span(filho)
         elif filho.dep_ == "nsubj:pass":
-            # frame["Arg1"] = normalizar_termo(" ".join(t.text for t in filho.subtree))
             frame["Arg1"] = extrair_span(filho)
     
     if verbo.dep_ == "conj":
         # tenta pegar o objeto direto do verbo coordenado
         for filho in verbo.head.children:
             if filho.dep_ == "obj":
-                # frame["Arg1"] = normalizar_termo(" ".join(t.text for t in filho.subtree))
                 frame["Arg1"] = extrair_span(filho)
                 break
             elif filho.dep_ == "nsubj:pass":
-                # frame["Arg1"] = normalizar_termo(" ".join(t.text for t in filho.subtree))
                 frame["Arg1"] = extrair_span(filho)
                 break
 
     # Define o agente (Arg0) - primeiro tenta o sujeito ativo, depois o agente em voz passiva, e por fim tenta pegar o sujeito do verbo coordenado (caso o verbo seja uma conjunção)
     if nsubj is not None:
-        # frame["Arg0"] = normalizar_termo(" ".join(t.text for t in nsubj.subtree))
         frame["Arg0"] = extrair_span(nsubj)
     elif obl_agent is not None:
-        frame["Arg0"] = normalizar_termo(" ".join(t.text for t in obl_agent.subtree if t.dep_ != "case"))
+        frame["Arg0"] = extrair_span(obl_agent)
     elif verbo.dep_ == "conj":
         # tenta pegar o sujeito do verbo coordenado
         for filho in verbo.head.children:
             if filho.dep_ == "nsubj":
-                frame["Arg0"] = normalizar_termo(" ".join(t.text for t in filho.subtree))
+                frame["Arg0"] = extrair_span(filho)
                 break
 
 def preencher_obl(frame):
@@ -267,7 +262,7 @@ def frames_para_grafo_estruturado(frames, event_id_inicial=0):
     event_id = event_id_inicial
 
     for f in frames:
-        event_node = f"evento_{event_id}"
+        event_node = f"{f['predicado']}_{event_id}"
         event_id += 1
 
         # Nó do evento com atributo 'tipo'
@@ -281,8 +276,8 @@ def frames_para_grafo_estruturado(frames, event_id_inicial=0):
         if f["Arg0"]:
             elementos.append({
                 "tipo": "aresta",
-                "origem": f["Arg0"],
-                "destino": event_node,
+                "origem": event_node,
+                "destino": f["Arg0"],
                 "papel": "Arg0"
             })
 
