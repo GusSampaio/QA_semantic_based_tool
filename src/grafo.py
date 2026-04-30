@@ -17,13 +17,34 @@ def classificar_no(no: str, nlp: spacy.Language) -> str:
     return "Outro"
 
 
-def construir_grafo(triplas: list, nlp: spacy.Language) -> nx.DiGraph:
+def construir_grafo(elementos: list, nlp: spacy.Language) -> nx.DiGraph:
+    """
+    Constrói grafo a partir de elementos estruturados (nós + arestas).
+    
+    Args:
+        elementos: lista de dicts com 'tipo' = 'no' ou 'aresta'
+    """
     grafo = nx.DiGraph()
 
-    for sujeito, predicado, objeto, origem in triplas:
-        grafo.add_node(sujeito, tipo=classificar_no(sujeito, nlp))
-        grafo.add_node(objeto,  tipo=classificar_no(objeto, nlp))
-        grafo.add_edge(sujeito, objeto, acao=predicado, origem=origem)
+    # Primeiro pass: adiciona todos os nós
+    for elem in elementos:
+        if elem["tipo"] == "no":
+            grafo.add_node(elem["id"], **elem["attrs"])
+
+    # Segundo pass: adiciona arestas
+    for elem in elementos:
+        if elem["tipo"] == "aresta":
+            origem = elem["origem"]
+            destino = elem["destino"]
+            papel = elem["papel"]
+
+            # Garante que nós dos argumentos existem
+            if origem not in grafo:
+                grafo.add_node(origem, tipo=classificar_no(origem, nlp))
+            if destino not in grafo:
+                grafo.add_node(destino, tipo=classificar_no(destino, nlp))
+
+            grafo.add_edge(origem, destino, papel=papel)
 
     return grafo
 
@@ -34,8 +55,8 @@ def fazer_pergunta_ao_grafo(grafo, conceito, acao_desejada=None):
     if conceito in grafo:
         for vizinho in grafo.successors(conceito):
             dados = grafo.get_edge_data(conceito, vizinho)
-            if acao_desejada is None or dados["acao"] == acao_desejada:
-                respostas.append((vizinho, dados["acao"]))
+            if acao_desejada is None or dados["papel"] == acao_desejada:
+                respostas.append((vizinho, dados["papel"]))
 
     return respostas
 
@@ -100,7 +121,7 @@ def desenhar_grafo(grafo):
     nx.draw_networkx_labels(grafo, pos, font_size=8, ax=ax)
     nx.draw_networkx_edge_labels(
         grafo, pos,
-        edge_labels=nx.get_edge_attributes(grafo, "acao"),
+        edge_labels=nx.get_edge_attributes(grafo, "papel"),
         font_size=7, ax=ax
     )
     ax.axis("off")

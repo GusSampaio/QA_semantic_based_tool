@@ -1,22 +1,14 @@
 import spacy
-import src.regras as regras_module
-# from src.regras import extrair_copula
+import src.frames as frames_module
 
-def extrair_triplas(frases: list, nlp: spacy.Language) -> list[tuple]:
-    triplas = []
+def extrair_triplas_frames(frases: list, nlp: spacy.Language) -> list:
+    elementos = []
+    event_id = 0
 
     for frase in frases:
         doc = nlp(frase.strip())
-        triplas.extend(regras_module.extrair_copula(frase.strip(), doc))
-        triplas.extend(regras_module.extrair_objeto_direto(frase.strip(), doc))
+        frames = frames_module.extrair_todos_frames(doc)
+        novos_elementos, event_id = frames_module.frames_para_grafo_estruturado(frames, event_id)
+        elementos.extend(novos_elementos)
 
-    # Remove duplicatas por (sujeito, predicado, objeto)
-    vistas = set()
-    triplas_unicas = []
-    for sujeito, predicado, objeto, origem in triplas:
-        chave = (sujeito, predicado, objeto)
-        if chave not in vistas:
-            vistas.add(chave)
-            triplas_unicas.append((sujeito, predicado, objeto, origem))
-
-    return triplas_unicas
+    return elementos
