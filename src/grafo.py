@@ -71,33 +71,34 @@ def detectar_conceito_na_pergunta(pergunta, grafo):
 
 def responder_pergunta(pergunta, grafo):
     pergunta_norm = normalizar_termo(pergunta)
-    conceito = detectar_conceito_na_pergunta(pergunta_norm, grafo)
+    return grafo.nodes(data=True), grafo.edges(data=True)
+    # conceito = detectar_conceito_na_pergunta(pergunta_norm, grafo)
 
-    if not conceito:
-        return (
-            "Não encontrei no grafo um conceito mencionado nessa pergunta. "
-            "Tente usar termos presentes no texto processado."
-        )
+    # if not conceito:
+    #     return (
+    #         "Não encontrei no grafo um conceito mencionado nessa pergunta. "
+    #         "Tente usar termos presentes no texto processado."
+    #     )
 
-    # O que é X? → busca instancia_de
-    if "o que é" in pergunta_norm or "defina" in pergunta_norm:
-        respostas = fazer_pergunta_ao_grafo(grafo, conceito, "instancia_de")
-        if respostas:
-            return f"{conceito.capitalize()} é {', '.join(r[0] for r in respostas)}."
+    # # O que é X? → busca instancia_de
+    # if "o que é" in pergunta_norm or "defina" in pergunta_norm:
+    #     respostas = fazer_pergunta_ao_grafo(grafo, conceito, "instancia_de")
+    #     if respostas:
+    #         return f"{conceito.capitalize()} é {', '.join(r[0] for r in respostas)}."
 
-    # Como é X? / Qual a característica de X? → busca tem_propriedade
-    if "como é" in pergunta_norm or "característica" in pergunta_norm or "propriedade" in pergunta_norm:
-        respostas = fazer_pergunta_ao_grafo(grafo, conceito, "tem_propriedade")
-        if respostas:
-            return f"{conceito.capitalize()} é {', '.join(r[0] for r in respostas)}."
+    # # Como é X? / Qual a característica de X? → busca tem_propriedade
+    # if "como é" in pergunta_norm or "característica" in pergunta_norm or "propriedade" in pergunta_norm:
+    #     respostas = fazer_pergunta_ao_grafo(grafo, conceito, "tem_propriedade")
+    #     if respostas:
+    #         return f"{conceito.capitalize()} é {', '.join(r[0] for r in respostas)}."
 
-    # Resposta genérica: todas as relações saindo do conceito
-    respostas = fazer_pergunta_ao_grafo(grafo, conceito, None)
-    if respostas:
-        partes = [f"{acao} → {obj}" for obj, acao in respostas]
-        return f"Relações encontradas para '{conceito}': " + "; ".join(partes) + "."
+    # # Resposta genérica: todas as relações saindo do conceito
+    # respostas = fazer_pergunta_ao_grafo(grafo, conceito, None)
+    # if respostas:
+    #     partes = [f"{acao} → {obj}" for obj, acao in respostas]
+    #     return f"Relações encontradas para '{conceito}': " + "; ".join(partes) + "."
 
-    return "Encontrei o conceito no grafo, mas não há relações suficientes para responder."
+    # return "Encontrei o conceito no grafo, mas não há relações suficientes para responder."
 
 
 # ============================================================
