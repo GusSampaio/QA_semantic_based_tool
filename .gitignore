@@ -1,6 +1,10 @@
+# Python-generated files
 __pycache__/
-*.py[cod]
-.venv/
-.env
-.DS_Store
-.streamlit/secrets.toml
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
