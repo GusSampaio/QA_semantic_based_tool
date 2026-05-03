@@ -1,4 +1,3 @@
-import spacy
 from src.auxiliares import normalizar_termo, eh_tempo
 
 def criar_frame(verbo):
@@ -213,41 +212,6 @@ def extrair_todos_frames(doc):
     frames.extend(extrair_frames_copula(doc)) # cópula
 
     return frames
-
-def frames_para_triplas(frames):
-    triplas = []
-    event_id = 0
-
-    for f in frames:
-        event_node = f"evento_{event_id}"
-        event_id += 1
-
-        # tipo do evento (verbo)
-        triplas.append((event_node, "tipo", f["predicado"]))
-
-        # Arg0
-        if f["Arg0"]:
-            triplas.append((event_node, "Arg0", f["Arg0"]))
-
-        # Arg1
-        if f["Arg1"]:
-            triplas.append((event_node, "Arg1", f["Arg1"]))
-
-        # Arg2 (se quiser já deixar pronto)
-        if f["Arg2"]:
-            triplas.append((event_node, "Arg2", f["Arg2"]))
-
-        # ArgMs
-        for loc in f["ArgMs"]["loc"]:
-            triplas.append((event_node, "loc", loc))
-
-        for tmp in f["ArgMs"]["tmp"]:
-            triplas.append((event_node, "tmp", tmp))
-
-        for outro in f["ArgMs"]["outros"]:
-            triplas.append((event_node, "mod", outro))
-
-    return triplas
 
 def frames_para_grafo_estruturado(frames, event_id_inicial=0):
     """

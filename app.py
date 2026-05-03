@@ -1,9 +1,8 @@
-import re
 import streamlit as st
 import spacy
 import pandas as pd
 
-from src.auxiliares import limpar_texto, separar_frases, normalizar_termo
+from src.auxiliares import limpar_texto, separar_frases
 from src.extracoes import extrair_triplas_frames
 import src.grafo as grafo_module
 from src.llm import LLM
@@ -24,7 +23,7 @@ def carregar_modelo_spacy():
     except OSError:
         st.error(
             "Modelo pt_core_news_sm não encontrado. "
-            "Execute no terminal: python -m spacy download pt_core_news_sm"
+            "Modelo pt_core_news_sm não encontrado. Execute: uv run python -m spacy download pt_core_news_sm"
         )
         st.stop()
 
@@ -85,7 +84,7 @@ with col2:
         if pergunta.strip():
 
             # tuplas_grafo = st.session_state.triplas
-            resposta_grafo = grafo_module.responder_pergunta(pergunta, st.session_state.grafo)
+            resposta_grafo = grafo_module.responder_pergunta(st.session_state.grafo)
             LLM_model = LLM(AppSettings())
             resposta_llm = LLM_model.answer_question_with_llm(
                 question=pergunta,

@@ -48,58 +48,8 @@ def construir_grafo(elementos: list, nlp: spacy.Language) -> nx.DiGraph:
 
     return grafo
 
-def fazer_pergunta_ao_grafo(grafo, conceito, acao_desejada=None):
-    respostas = []
-    conceito = normalizar_termo(conceito)
-
-    if conceito in grafo:
-        for vizinho in grafo.successors(conceito):
-            dados = grafo.get_edge_data(conceito, vizinho)
-            if acao_desejada is None or dados["papel"] == acao_desejada:
-                respostas.append((vizinho, dados["papel"]))
-
-    return respostas
-
-
-def detectar_conceito_na_pergunta(pergunta, grafo):
-    pergunta_norm = normalizar_termo(pergunta)
-    for no in sorted(grafo.nodes, key=len, reverse=True):
-        if no in pergunta_norm:
-            return no
-    return None
-
-
-def responder_pergunta(pergunta, grafo):
-    pergunta_norm = normalizar_termo(pergunta)
+def responder_pergunta(grafo):
     return grafo.nodes(data=True), grafo.edges(data=True)
-    # conceito = detectar_conceito_na_pergunta(pergunta_norm, grafo)
-
-    # if not conceito:
-    #     return (
-    #         "Não encontrei no grafo um conceito mencionado nessa pergunta. "
-    #         "Tente usar termos presentes no texto processado."
-    #     )
-
-    # # O que é X? → busca instancia_de
-    # if "o que é" in pergunta_norm or "defina" in pergunta_norm:
-    #     respostas = fazer_pergunta_ao_grafo(grafo, conceito, "instancia_de")
-    #     if respostas:
-    #         return f"{conceito.capitalize()} é {', '.join(r[0] for r in respostas)}."
-
-    # # Como é X? / Qual a característica de X? → busca tem_propriedade
-    # if "como é" in pergunta_norm or "característica" in pergunta_norm or "propriedade" in pergunta_norm:
-    #     respostas = fazer_pergunta_ao_grafo(grafo, conceito, "tem_propriedade")
-    #     if respostas:
-    #         return f"{conceito.capitalize()} é {', '.join(r[0] for r in respostas)}."
-
-    # # Resposta genérica: todas as relações saindo do conceito
-    # respostas = fazer_pergunta_ao_grafo(grafo, conceito, None)
-    # if respostas:
-    #     partes = [f"{acao} → {obj}" for obj, acao in respostas]
-    #     return f"Relações encontradas para '{conceito}': " + "; ".join(partes) + "."
-
-    # return "Encontrei o conceito no grafo, mas não há relações suficientes para responder."
-
 
 # ============================================================
 # 10. VISUALIZAÇÃO DO GRAFO

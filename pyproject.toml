@@ -1,8 +1,7 @@
 [project]
 name = "pln-projeto"
 version = "0.1.0"
-description = "Add your description here"
-readme = "README.md"
+description = "Aplicação Streamlit para extração de frames semânticos e visualização em grafo"
 requires-python = ">=3.13"
 dependencies = [
     "dotenv>=0.9.9",
