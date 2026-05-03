@@ -1,16 +1,23 @@
 [project]
-name = "pln-projeto"
+name = "qa-semantic-rag-integrated"
 version = "0.1.0"
-description = "Add your description here"
+description = "Integrated symbolic NLP + MongoDB Atlas Vector Search + Mistral RAG app for interactive textbook QA."
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.11,<3.14"
 dependencies = [
-    "matplotlib>=3.10.9",
-    "networkx>=3.6.1",
-    "pandas>=3.0.2",
+    "streamlit>=1.36.0",
+    "python-dotenv>=1.0.1",
+    "pymongo>=4.7.0",
+    "langchain-core>=0.3.0",
+    "langchain-huggingface>=0.1.0",
+    "langchain-mistralai>=0.2.0",
+    "langchain-mongodb>=0.4.0",
+    "langchain-text-splitters>=0.3.0",
+    "spacy>=3.8.0",
     "pt-core-news-sm",
-    "spacy>=3.8.14",
-    "streamlit>=1.56.0",
+    "networkx>=3.2.0",
+    "matplotlib>=3.8.0",
+    "pandas>=2.2.0",
 ]
 
 [tool.uv.sources]
