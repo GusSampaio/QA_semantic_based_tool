@@ -6,6 +6,8 @@ import pandas as pd
 from src.auxiliares import limpar_texto, separar_frases, normalizar_termo
 from src.extracoes import extrair_triplas_frames
 import src.grafo as grafo_module
+from src.llm import LLM
+from src.settings import AppSettings
 
 # Configuracao geral da pagina
 st.set_page_config(
@@ -29,7 +31,12 @@ def carregar_modelo_spacy():
 nlp = carregar_modelo_spacy()
 
 # Texto de exemplo
-TEXTO_PADRAO = """As células-filhas foram geradas pela mitose. A mitose é um processo celular."""
+TEXTO_PADRAO = """A mitose gera células-filhas.
+As células-filhas foram geradas pela mitose.
+A mitose ocorre em células eucariontes em 2020.
+A mitose ocorre em células eucariontes e produz células-filhas.
+As células que foram geradas pela mitose entram em divisão.
+As células que foram geradas pela mitose e organizadas pelo núcleo entram em divisão."""
     
 func_extracao = extrair_triplas_frames
 modo_extracao = "Frames Semânticos"
@@ -76,7 +83,18 @@ with col2:
 
     if st.button("Responder"):
         if pergunta.strip():
-            st.info(grafo_module.responder_pergunta(pergunta, st.session_state.grafo))
+
+            # tuplas_grafo = st.session_state.triplas
+            resposta_grafo = grafo_module.responder_pergunta(pergunta, st.session_state.grafo)
+            LLM_model = LLM(AppSettings())
+            resposta_llm = LLM_model.answer_question_with_llm(
+                question=pergunta,
+                tuplas_grafo=resposta_grafo,
+            )
+            st.markdown("### Resposta do grafo:")
+            st.write(resposta_grafo)
+            st.markdown("### Resposta do LLM:")
+            st.write(resposta_llm)
         else:
             st.warning("Digite uma pergunta primeiro.")
 
