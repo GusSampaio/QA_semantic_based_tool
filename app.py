@@ -3,7 +3,7 @@ import spacy
 import pandas as pd
 
 from src.auxiliares import limpar_texto, separar_frases
-from src.extracoes import extrair_triplas_frames
+from src.extracoes import extrair_triplas_frames, extrair_triplas_frames_com_metodo
 import src.grafo as grafo_module
 from src.llm import LLM
 from src.settings import AppSettings
@@ -36,9 +36,6 @@ A mitose ocorre em células eucariontes em 2020.
 A mitose ocorre em células eucariontes e produz células-filhas.
 As células que foram geradas pela mitose entram em divisão.
 As células que foram geradas pela mitose e organizadas pelo núcleo entram em divisão."""
-    
-func_extracao = extrair_triplas_frames
-modo_extracao = "Frames Semânticos"
 
 # Inicialização do estado -------------------------------------------------------
 if "triplas" not in st.session_state:
@@ -49,6 +46,24 @@ if "triplas" not in st.session_state:
     st.session_state.frases = frases_iniciais
     st.session_state.triplas = triplas_iniciais
     st.session_state.grafo = grafo_inicial
+    st.session_state.metodo_atual = "Simbólico"
+
+# Sidebar — seleção de método ---------------------------------------------------
+with st.sidebar:
+    st.header("⚙️ Configurações")
+    metodo_selecionado = st.radio(
+        "Método de extração:",
+        options=["Simbólico", "Estatístico"],
+        index=0,
+        help=(
+            "**Simbólico:** regras linguísticas determinísticas sobre labels "
+            "Universal Dependencies (UD). Alta precisão, sem gradação de confiança.\n\n"
+            "**Estatístico:** candidatos a argumento pontuados por frequência de "
+            "termos no corpus e distância na árvore de dependências. Inclui fallback "
+            "por chunks nominais quando sinais diretos estão ausentes."
+        ),
+    )
+    metodo_key = "estatistico" if metodo_selecionado == "Estatístico" else "simbolico"
 
 # UI ----------------------------------------------------------------------------
 st.title("📖 Livro Didático Virtual Interativo")
@@ -66,14 +81,19 @@ with col1:
 
     if st.button("🔎 Processar texto e gerar grafo"):
         frases = separar_frases(limpar_texto(texto), nlp)
-        triplas = func_extracao(frases, nlp)
+        triplas = extrair_triplas_frames_com_metodo(frases, nlp, metodo=metodo_key)
         grafo = grafo_module.construir_grafo(triplas, nlp)
 
         st.session_state.frases = frases
         st.session_state.triplas = triplas
         st.session_state.grafo = grafo
+        st.session_state.metodo_atual = metodo_selecionado
 
-        st.success(f"Texto processado. Foram extraídas {len(triplas)} triplas e o grafo resultante tem {grafo.number_of_nodes()} nós e {grafo.number_of_edges()} arestas.")
+        st.success(
+            f"Texto processado com método **{metodo_selecionado}**. "
+            f"Foram extraídas {len(triplas)} triplas e o grafo resultante tem "
+            f"{grafo.number_of_nodes()} nós e {grafo.number_of_edges()} arestas."
+        )
 
 # COLUNA PERGUNTAS --------------------------------------------------------------
 with col2:
@@ -99,6 +119,8 @@ with col2:
 
 # TABS --------------------------------------------------------------------------
 st.markdown("---")
+
+modo_extracao = st.session_state.get("metodo_atual", "Simbólico")
 
 tab1, tab2, tab3 = st.tabs([
     "🕸️ Grafo",
