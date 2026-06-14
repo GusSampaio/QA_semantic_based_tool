@@ -77,14 +77,25 @@ def resolver_relativo(token):
     if token.text.lower() != "que":
         return token
 
-    # sobe na árvore até achar um substantivo
+    # sobe na árvore até achar um substantivo, parando na raiz
+    # (no spaCy a raiz aponta para si mesma, então head nunca é None).
+    # Prefere NOUN/PROPN; guarda o primeiro ADJ como fallback, pois o parser
+    # às vezes etiqueta o núcleo nominal como adjetivo (ex.: "animais" em
+    # "são animais vertebrados que vivem...").
     atual = token.head
-    while atual is not None:
+    candidato_adj = None
+    visitados = set()
+    while atual.i not in visitados:
+        visitados.add(atual.i)
         if atual.pos_ in ("NOUN", "PROPN"):
             return atual
+        if candidato_adj is None and atual.pos_ == "ADJ":
+            candidato_adj = atual
+        if atual.head.i == atual.i:
+            break
         atual = atual.head
 
-    return token  # fallback
+    return candidato_adj or token  # fallback
 
 def extrair_span(token):
     token = resolver_relativo(token)
