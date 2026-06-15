@@ -4,10 +4,22 @@ def criar_frame(verbo):
     return {
         "verbo": verbo,
         "predicado": normalizar_termo(verbo.lemma_),
+
         "Arg0": None,
         "Arg1": None,
         "Arg2": None,
+
+        "Arg0_head": None,
+        "Arg1_head": None,
+        "Arg2_head": None,
+
         "ArgMs": {
+            "loc": [],
+            "tmp": [],
+            "outros": []
+        },
+
+        "ArgMs_heads": {
             "loc": [],
             "tmp": [],
             "outros": []
@@ -69,11 +81,7 @@ def extrair_frames_copula(doc):
     return frames
 
 def resolver_relativo(token):
-    """
-    Se o token for um pronome relativo ('que'),
-    tenta recuperar o antecedente (substantivo).
-    Caso contrário, retorna o próprio token.
-    """
+
     if token.text.lower() != "que":
         return token
 
@@ -131,74 +139,96 @@ def extrair_span(token):
 # Descobre quem são os partipantes do evento e depois preenche o frame (arg0 e arg1)
 def preencher_objeto_direto(frame):
 
-    # Centro do frame é o verbo
     verbo = frame["verbo"]
 
     nsubj = None
     obl_agent = None
 
-    # Descobre quais palavras dependem diretamente desse verbo
     for filho in verbo.children:
-        if filho.dep_ == "nsubj": # sujeito ativo (agente)
+        if filho.dep_ == "nsubj":
             nsubj = filho
-        elif filho.dep_ == "obl:agent": # agente em voz passiva 
+        elif filho.dep_ == "obl:agent":
             obl_agent = filho
 
-    # Descobre o objeto direto (paciente)
     for filho in verbo.children:
+
         if filho.dep_ == "obj":
             frame["Arg1"] = extrair_span(filho)
+            frame["Arg1_head"] = filho
+
         elif filho.dep_ == "nsubj:pass":
             frame["Arg1"] = extrair_span(filho)
-    
+            frame["Arg1_head"] = filho
+
     if verbo.dep_ == "conj":
-        # tenta pegar o objeto direto do verbo coordenado
+
         for filho in verbo.head.children:
+
             if filho.dep_ == "obj":
                 frame["Arg1"] = extrair_span(filho)
-                break
-            elif filho.dep_ == "nsubj:pass":
-                frame["Arg1"] = extrair_span(filho)
+                frame["Arg1_head"] = filho
                 break
 
-    # Define o agente (Arg0) - primeiro tenta o sujeito ativo, depois o agente em voz passiva, e por fim tenta pegar o sujeito do verbo coordenado (caso o verbo seja uma conjunção)
+            elif filho.dep_ == "nsubj:pass":
+                frame["Arg1"] = extrair_span(filho)
+                frame["Arg1_head"] = filho
+                break
+
     if nsubj is not None:
         frame["Arg0"] = extrair_span(nsubj)
+        frame["Arg0_head"] = nsubj
+
     elif obl_agent is not None:
         frame["Arg0"] = extrair_span(obl_agent)
+        frame["Arg0_head"] = obl_agent
+
     elif verbo.dep_ == "conj":
-        # tenta pegar o sujeito do verbo coordenado
+
         for filho in verbo.head.children:
             if filho.dep_ == "nsubj":
                 frame["Arg0"] = extrair_span(filho)
+                frame["Arg0_head"] = filho
                 break
 
 def preencher_obl(frame):
+
     verbo = frame["verbo"]
 
     for filho in verbo.children:
+
         if filho.dep_ != "obl":
             continue
 
-        span = normalizar_termo(" ".join(t.text for t in filho.subtree))
+        span = normalizar_termo(
+            " ".join(t.text for t in filho.subtree)
+        )
 
         prep = None
+
         for t in filho.children:
             if t.dep_ == "case":
                 prep = t.text.lower()
                 break
 
         if prep in {"em", "no", "na", "nos", "nas"}:
+
             if eh_tempo(span):
                 frame["ArgMs"]["tmp"].append(span)
+                frame["ArgMs_heads"]["tmp"].append(filho)
+
             else:
                 frame["ArgMs"]["loc"].append(span)
+                frame["ArgMs_heads"]["loc"].append(filho)
 
         elif prep in {"durante", "após", "antes"}:
+
             frame["ArgMs"]["tmp"].append(span)
+            frame["ArgMs_heads"]["tmp"].append(filho)
 
         else:
+
             frame["ArgMs"]["outros"].append(span)
+            frame["ArgMs_heads"]["outros"].append(filho)
 
 def extrair_frames(doc):
     frames = []
