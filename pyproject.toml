@@ -12,6 +12,8 @@ dependencies = [
     "pt-core-news-sm",
     "spacy>=3.8.14",
     "streamlit>=1.56.0",
+    "torch>=2.5",
+    "transformers>=4.46.3",
 ]
 
 [tool.uv.sources]

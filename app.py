@@ -1,9 +1,16 @@
+import logging
+
 import streamlit as st
 import spacy
 import pandas as pd
 
+# O file-watcher do Streamlit tenta introspeccionar todos os submódulos de
+# transformers já carregados; os de visão importam torchvision (não instalado)
+# e poluem o console com tracebacks inofensivos. Silencia só esse logger.
+logging.getLogger("streamlit.watcher.local_sources_watcher").setLevel(logging.ERROR)
+
 from src.auxiliares import limpar_texto, separar_frases
-from src.extracoes import extrair_triplas_frames
+from src.extracoes import extrair_triplas_frames, extrair_triplas_frames_com_metodo
 import src.grafo as grafo_module
 from src.llm import LLM
 from src.settings import AppSettings
@@ -12,8 +19,9 @@ from src.settings import AppSettings
 st.set_page_config(
     page_title="Livro Didático Interativo com Grafo Semântico",
     page_icon="📖",
-    layout="wide"
+    layout="wide",
 )
+
 
 # Carregando modelo spacy para portugues
 @st.cache_resource
@@ -27,6 +35,7 @@ def carregar_modelo_spacy():
         )
         st.stop()
 
+
 nlp = carregar_modelo_spacy()
 
 # Texto de exemplo
@@ -36,9 +45,28 @@ A mitose ocorre em células eucariontes em 2020.
 A mitose ocorre em células eucariontes e produz células-filhas.
 As células que foram geradas pela mitose entram em divisão.
 As células que foram geradas pela mitose e organizadas pelo núcleo entram em divisão."""
-    
-func_extracao = extrair_triplas_frames
-modo_extracao = "Frames Semânticos"
+
+# Métodos de extração disponíveis (rótulo na UI → chave da factory) -------------
+METODOS_EXTRACAO = {
+    "Simbólico": "simbolico",
+    "Neural (SRL)": "srl",
+}
+
+# Sidebar — seleção do método ---------------------------------------------------
+with st.sidebar:
+    st.header("⚙️ Configurações")
+    modo_extracao = st.radio(
+        "Método de extração:",
+        options=list(METODOS_EXTRACAO.keys()),
+        index=0,
+        help=(
+            "**Simbólico:** regras linguísticas determinísticas sobre labels "
+            "Universal Dependencies (UD).\n\n"
+            "**Neural (SRL):** modelo BERT de Semantic Role Labeling em português. "
+            "O primeiro uso baixa o modelo (~108 MB) e pode demorar alguns instantes."
+        ),
+    )
+metodo_extracao = METODOS_EXTRACAO[modo_extracao]
 
 # Inicialização do estado -------------------------------------------------------
 if "triplas" not in st.session_state:
@@ -66,14 +94,19 @@ with col1:
 
     if st.button("🔎 Processar texto e gerar grafo"):
         frases = separar_frases(limpar_texto(texto), nlp)
-        triplas = func_extracao(frases, nlp)
+        with st.spinner(f"Extraindo com método {modo_extracao}…"):
+            triplas = extrair_triplas_frames_com_metodo(
+                frases, nlp, metodo=metodo_extracao
+            )
         grafo = grafo_module.construir_grafo(triplas, nlp)
 
         st.session_state.frases = frases
         st.session_state.triplas = triplas
         st.session_state.grafo = grafo
 
-        st.success(f"Texto processado. Foram extraídas {len(triplas)} triplas e o grafo resultante tem {grafo.number_of_nodes()} nós e {grafo.number_of_edges()} arestas.")
+        st.success(
+            f"Texto processado com método **{modo_extracao}**. Foram extraídas {len(triplas)} triplas e o grafo resultante tem {grafo.number_of_nodes()} nós e {grafo.number_of_edges()} arestas."
+        )
 
 # COLUNA PERGUNTAS --------------------------------------------------------------
 with col2:
@@ -100,17 +133,15 @@ with col2:
 # TABS --------------------------------------------------------------------------
 st.markdown("---")
 
-tab1, tab2, tab3 = st.tabs([
-    "🕸️ Grafo",
-    "📌 Arestas",
-    "📌 Nós"
-])
+tab1, tab2, tab3 = st.tabs(["🕸️ Grafo", "📌 Arestas", "📌 Nós"])
 
 # GRAFO -------------------------------------------------------------------------
 with tab1:
     grafo = st.session_state.grafo
     st.caption(f"Modo atual: {modo_extracao}")
-    st.write(f"Nós: **{grafo.number_of_nodes()}** | Arestas: **{grafo.number_of_edges()}**")
+    st.write(
+        f"Nós: **{grafo.number_of_nodes()}** | Arestas: **{grafo.number_of_edges()}**"
+    )
 
     if grafo.number_of_nodes() > 0:
         st.pyplot(grafo_module.desenhar_grafo(grafo))
@@ -127,21 +158,26 @@ with tab2:
             {
                 "Evento (Ação)": t["origem"],
                 "Relação Semântica": t["papel"],
-                "Objeto": t["destino"]
-            } for t in triplas if t["tipo"] == "aresta"
-        ]   
+                "Objeto": t["destino"],
+            }
+            for t in triplas
+            if t["tipo"] == "aresta"
+        ]
         st.dataframe(
-            pd.DataFrame(triplas_arestas, columns=["Evento (Ação)", "Relação Semântica", "Objeto"]),
-            width='stretch'
+            pd.DataFrame(
+                triplas_arestas,
+                columns=["Evento (Ação)", "Relação Semântica", "Objeto"],
+            ),
+            width="stretch",
         )
 
         st.markdown("### Formato textual")
 
         for tripla in triplas:
-            if tripla['tipo'] == 'aresta':
-                s = tripla['origem']
-                p = tripla['papel']
-                o = tripla['destino']
+            if tripla["tipo"] == "aresta":
+                s = tripla["origem"]
+                p = tripla["papel"]
+                o = tripla["destino"]
                 st.code(f"[{s}] --({p})--> [{o}]")
     else:
         st.warning("Nenhuma tripla extraída.")
@@ -154,22 +190,21 @@ with tab3:
     if triplas:
 
         triplas_nos = [
-            {
-                "ID do evento": t["id"],
-                "Tipo do evento": t["attrs"]["tipo_evento"]
-            } for t in triplas if t["tipo"] == "no"
+            {"ID do evento": t["id"], "Tipo do evento": t["attrs"]["tipo_evento"]}
+            for t in triplas
+            if t["tipo"] == "no"
         ]
         st.dataframe(
             pd.DataFrame(triplas_nos, columns=["ID do evento", "Tipo do evento"]),
-            width='stretch'
+            width="stretch",
         )
 
         st.markdown("### Formato textual")
 
         for tripla in triplas:
-            if tripla['tipo'] == 'no':
-                s = tripla['id']
-                t = tripla['attrs']['tipo_evento']
+            if tripla["tipo"] == "no":
+                s = tripla["id"]
+                t = tripla["attrs"]["tipo_evento"]
                 st.code(f"[{s}] (tipo: {t})")
     else:
         st.warning("Nenhuma tripla extraída.")

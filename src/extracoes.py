@@ -12,3 +12,16 @@ def extrair_triplas_frames(frases: list, nlp: spacy.Language) -> list:
         elementos.extend(novos_elementos)
 
     return elementos
+
+
+def extrair_triplas_frames_com_metodo(
+    frases: list, nlp: spacy.Language, metodo: str = "simbolico"
+) -> list:
+    """Extrai frames usando o método escolhido pelo usuário.
+
+    "simbolico" → regras linguísticas sobre Universal Dependencies (padrão).
+    "srl"       → modelo neural BERT de Semantic Role Labeling.
+    """
+    from src.extrator_base import criar_extrator
+
+    return criar_extrator(metodo).extrair_elementos(frases, nlp)
