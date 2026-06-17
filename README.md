@@ -4,18 +4,13 @@ Aplicação em Python com Streamlit para extrair relações semânticas de texto
 
 O projeto utiliza técnicas de Processamento de Linguagem Natural para identificar eventos, participantes e relações em frases, permitindo visualizar essas informações em uma estrutura de grafo.
 
+O desenvolvimento (em andamento) do modelo BERT utilizado parcialmente neste projeto, pode ser encontrado em [neste link](https://github.com/GusSampaio/brazilian_semantic_bert).
+
 ## Objetivo
 
-O objetivo do projeto é transformar textos em português em uma representação visual baseada em grafo semântico.
+### Funcionamento Gramatical e Lógico da Extração
 
-A aplicação permite:
-
-- inserir um texto;
-- processar frases com spaCy;
-- extrair frames semânticos;
-- construir um grafo com nós e arestas;
-- visualizar o grafo gerado;
-- consultar o grafo com apoio de um modelo de linguagem.
+O objetivo deste projeto é transformar textos livres em português em uma representação visual estruturada na forma de grafos semânticos, automatizando a descoberta de conhecimento linguístico. A aplicação centraliza todo esse fluxo em uma interface interativa que permite ao usuário inserir um texto, processar suas frases por meio do framework spaCy e extrair frames semânticos detalhados. A partir desses dados, o sistema constrói uma rede de nós e arestas que é renderizada visualmente na tela, oferecendo ainda uma camada de inteligência que permite ao usuário consultar as informações do grafo gerado conversacionalmente com o apoio de um modelo de linguagem (LLM).
 
 ## Tecnologias utilizadas
 
@@ -95,6 +90,7 @@ CHAT_MODEL=mistral-small-latest
 ```
 
 A variável `MISTRAL_API_KEY` é necessária para gerar respostas usando a API da Mistral.
+O uso de uma API para o hugging face é opcional, visto que a chamada para o modelo funciona sem ela.
 
 ## Funcionamento geral
 
@@ -124,3 +120,18 @@ Texto do usuário
 - O foco principal é a extração e visualização de relações semânticas.
 - A qualidade da extração depende da análise sintática feita pelo modelo spaCy.
 - A resposta via LLM depende de uma chave válida da Mistral.
+
+## Metodologia e Métricas de Avaliação
+
+A validação do projeto foi realizada utilizando um conjunto de teste extraído do córpus [Porttinari-base Propbank](https://sites.google.com/icmc.usp.br/poetisa/porttinari-base-propbank) (versão clássica, disponibilizado [neste link do Hugging Face](https://huggingface.co/datasets/GusSampaio/pbp-srl-test-predictions/tree/main)). A avaliação comparou o desempenho global e por papel semântico entre o modelo baseado em Deep Learning (BERT) e a abordagem heurística por regras desenvolvida neste repositório.
+
+Enquanto o modelo BERT apresentou alta robustez generalista — alcançando um F1-Score global de 76.21 e excelentes métricas nos argumentos centrais (F1 superior a 92% para Arg0 e Arg1), a abordagem por regras funcionou como uma linha de base (baseline) leve e determinística. 
+
+F1-score medido
+| Papel | Modelo BERT  | Estratégia por Regras |
+| :--- | :---: | :---: |
+| **Global** | 76.21 | 0.4197 |
+| **ARG0** (Agente) | 92.66 | 51.31 |
+| **ARG1** (Paciente) | 93.08 | 39.12 |
+| **ARGM-LOC** (Lugar) | 75.44 | 43.48 |
+| **ARGM-TMP** (Tempo) | 87.00 | 15.14  |
